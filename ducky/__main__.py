@@ -36,6 +36,7 @@ def create_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = create_parser().parse_args()
     cassiopeia.set_riot_api_key(args.api_key)
+    cassiopeia.apply_settings({'logging': {'print_calls': False}})
     bot = Bot(command_prefix=args.prefix, description=__doc__)
     print("starting up")
     bot.add_cog(ErrorHandler())
