@@ -72,10 +72,11 @@ class MasteryRole(commands.Cog):
         mastery = await loop.run_in_executor(None, masterygetter)
         matching_role = find_matching_role(mastery.points)
         print(
-            f"giving {ctx.message.author} role {matching_role} for {mastery.points:,} points on {name} in {region}"
+            f"giving {ctx.message.author} role {matching_role} for "
+            f"{mastery.points:,} points on {name} in {region.value}"
         )
         await ctx.message.author.add_roles(
             discord.Object(id=matching_role),
-            reason=f"mastery score of {mastery.points:,} on {name} in {region}",
+            reason=f"mastery score of {mastery.points:,} on {name} in {region.value}",
         )
         await ctx.send("role added!")
