@@ -88,6 +88,7 @@ class MasteryTable(commands.Cog):
 
         if ctx.message.guild.id in self.builds_running:
             await ctx.channel.send("build already running")
+            return
 
         self.builds_running.add(ctx.message.guild.id)
 
