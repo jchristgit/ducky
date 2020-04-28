@@ -37,7 +37,7 @@ def main() -> None:
     args = create_parser().parse_args()
     cassiopeia.apply_settings({'logging': {'print_calls': False}})
     cassiopeia.set_riot_api_key(args.api_key)
-    bot = Bot(command_prefix=args.prefix, description=__doc__)
+    bot = Bot(command_prefix=args.prefix, description=__doc__, max_messages=None)
     print("starting up")
     bot.add_cog(ErrorHandler())
     bot.add_cog(MasteryRole(dsn=args.dsn))
