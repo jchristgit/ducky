@@ -131,7 +131,9 @@ class MasteryTable(commands.Cog):
                 summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
                 masteries.append((summoner_name, region.value, mastery.points))
 
-            sorted_masteries = sorted(masteries, key=operator.itemgetter(2))
+            sorted_masteries = sorted(
+                masteries, key=operator.itemgetter(2), reverse=True
+            )
             head = [
                 r'\# | Name | Region | Points',
                 '---:|------|--------|-------',
