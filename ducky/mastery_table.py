@@ -129,7 +129,9 @@ class MasteryTable(commands.Cog):
                 )
                 mastery = await loop.run_in_executor(None, masterygetter)
                 summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
-                masteries.append((summoner_name, region.value, mastery.points))
+                if mastery.points:
+                    # Do not add users with score of 0
+                    masteries.append((summoner_name, region.value, mastery.points))
 
             sorted_masteries = sorted(
                 masteries, key=operator.itemgetter(2), reverse=True
