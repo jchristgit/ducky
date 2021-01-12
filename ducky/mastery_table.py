@@ -25,6 +25,7 @@ def may_invoke(ctx: commands.Context) -> bool:
         107951056813559808,  # Blitze
         80838982283304960,  # Jab
         247821704431140864,  # Mouse
+        241751185101553664,  # Venm
     )
     if not allowed:
         print("rejecting disallowed user %s", ctx.message.author)
