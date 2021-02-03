@@ -3,6 +3,7 @@ import contextlib
 import functools
 import io
 import operator
+import random
 from typing import Set
 
 import aiopg
@@ -29,6 +30,40 @@ def may_invoke(ctx: commands.Context) -> bool:
     if not allowed:
         print("rejecting disallowed user %s", ctx.message.author)
     return allowed
+
+
+def go_for_phrase() -> str:
+    return random.choice(
+        # this will take a while, go...
+        (
+            # healthy
+            'on a walk',
+            'ventilate your room',
+            'stand up and walk for a moment',
+            'cook some food',
+            'hydrate yourself',
+
+            # friendly
+            'grab a coffee',
+            'make some tea',
+            'watch the sky',
+            'read the news',
+            'get a snack',
+            'eat something',
+            'admire the sun',
+            'call a friend and ask how they\'re doing',
+            'text a friend and ask how they\'re doing',
+            'find some new music',
+
+            # less friendly
+            'for a piss',
+            'outside',
+
+            # revealing intentions
+            'submit to your robot overlords',
+            'pray to bolt',
+        )
+    )
 
 
 class MasteryTable(commands.Cog):
@@ -150,6 +185,12 @@ class MasteryTable(commands.Cog):
                     return None
 
                 await ctx.channel.send(f":ok: starting build for {len(summoners)} summoners")
+
+                if len(summoners) >= 20:
+                    await ctx.channel.send(
+                        f":information_source: this will take a while, why not go {go_for_phrase()}?"
+                    )
+
                 champion = Champion(
                     id=champion_row[1], region=Platform(summoners[0][2]).region
                 )
