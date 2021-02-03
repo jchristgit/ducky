@@ -190,12 +190,13 @@ class MasteryTable(commands.Cog):
 
                     else:
                         # Remove users who never played the champion
-                        # await cursor.execute("DELETE FROM summoners WHERE entry_id = %s", (entry_id,))
+                        await cursor.execute("DELETE FROM summoners WHERE entry_id = %s", (entry_id,))
                         await ctx.channel.send(
                             f":information_source: player `{summoner.name}` on "
                             f"`{region.value}` never played `{champion.name}`, "
                             "automatically dropped from table"
                         )
+                        print(f"auto-drop {summoner.name} on {region.value} (eid={entry_id})")
 
             sorted_masteries = sorted(
                 masteries, key=operator.itemgetter(2), reverse=True
