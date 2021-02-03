@@ -165,6 +165,7 @@ class MasteryTable(commands.Cog):
         self.builds_running.add(ctx.message.guild.id)
 
         try:
+            raise Exception('boom')
             async with db_cursor(self.dsn) as cursor:
                 await cursor.execute(
                     "SELECT entry_id, id FROM champions WHERE guild_id = %s",
@@ -254,6 +255,12 @@ class MasteryTable(commands.Cog):
             output = io.BytesIO('\n'.join(head).encode())
             table = discord.File(fp=output, filename='table.txt')
             await ctx.channel.send(":receipt: build done", file=table)
+
+        except Exception:
+            await ctx.channel.send(
+                f":warning: sorry, something crashed. congratulations <@{ctx.bot.owner_id}>"
+            )
+            raise
 
         finally:
             self.builds_running.remove(ctx.message.guild.id)
