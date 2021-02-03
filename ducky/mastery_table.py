@@ -165,7 +165,6 @@ class MasteryTable(commands.Cog):
         self.builds_running.add(ctx.message.guild.id)
 
         try:
-            raise Exception('boom')
             async with db_cursor(self.dsn) as cursor:
                 await cursor.execute(
                     "SELECT entry_id, id FROM champions WHERE guild_id = %s",
