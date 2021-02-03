@@ -77,6 +77,38 @@ class MasteryTable(commands.Cog):
 
     @commands.guild_only()
     @commands.check_any(commands.is_owner(), may_invoke)
+    @summoner.command(name='remove')
+    async def summoner_remove(
+        self, ctx: commands.Context, region: as_region, *, name: str
+    ) -> None:
+        """Remove a summoner to the mastery sidebar."""
+
+        summoner = Summoner(region=region, name=name)
+        summoner_id = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: summoner.id
+        )  # noblock event loop
+        async with db_cursor(self.dsn) as cursor:
+            query = (
+                "DELETE FROM summoners "
+                "WHERE guild_id = %s AND platform = %s AND id = %s"
+            )
+
+            await cursor.execute(
+                query,
+                (
+                    ctx.message.guild.id,
+                    summoner_id,
+                    region.platform.value.casefold()
+                )
+            )
+
+            if cursor.rowcount:
+                await ctx.channel.send("summoner removed")
+            else:
+                await ctx.channel.send("unknown summoner")
+
+    @commands.guild_only()
+    @commands.check_any(commands.is_owner(), may_invoke)
     @commands.group()
     async def table(self, ctx: commands.Context) -> None:
         """Table building."""
