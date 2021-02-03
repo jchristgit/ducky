@@ -8,7 +8,6 @@ from typing import Set
 import aiopg
 import cassiopeia
 import discord
-import psycopg2.errors
 from cassiopeia import Champion, Region, Platform, Summoner
 from discord.ext import commands
 
@@ -59,21 +58,27 @@ class MasteryTable(commands.Cog):
         )  # noblock event loop
         async with db_cursor(self.dsn) as cursor:
             try:
+                query = (
+                    "INSERT INTO summoners (guild_id, platform, id) "
+                    "VALUES (%s, %s, %s) "
+                    "ON CONFLICT DO NOTHING"
+                )
                 await cursor.execute(
-                    "INSERT INTO summoners (guild_id, platform, id) VALUES (%s, %s, %s)",
+                    query,
                     (
                         ctx.message.guild.id,
                         region.platform.value.casefold(),
                         summoner_id,
                     ),
                 )
-            except psycopg2.errors.UniqueViolation:
-                await ctx.channel.send("summoner already added")
-            else:
-                print(
-                    f"{ctx.message.author} added {name} on {region.value} for {ctx.message.guild.name}"
-                )
-                await ctx.channel.send("summoner added")
+
+                if cursor.rowcount:
+                    print(
+                        f"{ctx.message.author} added {name} on {region.value} for {ctx.message.guild.name}"
+                    )
+                    await ctx.channel.send(":ok_hand: summoner added")
+                else:
+                    await ctx.channel.send(":x: summoner already added")
 
     @commands.guild_only()
     @commands.check_any(commands.is_owner(), may_invoke)
@@ -103,9 +108,9 @@ class MasteryTable(commands.Cog):
             )
 
             if cursor.rowcount:
-                await ctx.channel.send("summoner removed")
+                await ctx.channel.send(":ok_hand: summoner removed")
             else:
-                await ctx.channel.send("unknown summoner")
+                await ctx.channel.send(":x: unknown summoner")
 
     @commands.guild_only()
     @commands.check_any(commands.is_owner(), may_invoke)
@@ -133,7 +138,7 @@ class MasteryTable(commands.Cog):
                 )
                 champion_row = await cursor.fetchone()
                 if champion_row is None:
-                    await ctx.channel.send("guild champion must be configured first")
+                    await ctx.channel.send(":x: guild champion must be configured first")
                     return None
 
                 await cursor.execute(
@@ -142,10 +147,10 @@ class MasteryTable(commands.Cog):
                 )
                 summoners = await cursor.fetchall()
                 if not summoners:
-                    await ctx.channel.send("no summoners added")
+                    await ctx.channel.send(":x: no summoners added")
                     return None
 
-                await ctx.channel.send(f"starting build for {len(summoners)} summoners")
+                await ctx.channel.send(f":ok: starting build for {len(summoners)} summoners")
                 champion = Champion(
                     id=champion_row[1], region=Platform(summoners[0][2]).region
                 )
@@ -197,7 +202,7 @@ class MasteryTable(commands.Cog):
 
             output = io.BytesIO('\n'.join(head).encode())
             table = discord.File(fp=output, filename='table.txt')
-            await ctx.channel.send("build done", file=table)
+            await ctx.channel.send(":receipt: build done", file=table)
 
         finally:
             self.builds_running.remove(ctx.message.guild.id)
