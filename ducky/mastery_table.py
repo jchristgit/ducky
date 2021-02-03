@@ -57,28 +57,27 @@ class MasteryTable(commands.Cog):
             None, lambda: summoner.id
         )  # noblock event loop
         async with db_cursor(self.dsn) as cursor:
-            try:
-                query = (
-                    "INSERT INTO summoners (guild_id, platform, id) "
-                    "VALUES (%s, %s, %s) "
-                    "ON CONFLICT DO NOTHING"
-                )
-                await cursor.execute(
-                    query,
-                    (
-                        ctx.message.guild.id,
-                        region.platform.value.casefold(),
-                        summoner_id,
-                    ),
-                )
+            query = (
+                "INSERT INTO summoners (guild_id, platform, id) "
+                "VALUES (%s, %s, %s) "
+                "ON CONFLICT DO NOTHING"
+            )
+            await cursor.execute(
+                query,
+                (
+                    ctx.message.guild.id,
+                    region.platform.value.casefold(),
+                    summoner_id,
+                ),
+            )
 
-                if cursor.rowcount:
-                    print(
-                        f"{ctx.message.author} added {name} on {region.value} for {ctx.message.guild.name}"
-                    )
-                    await ctx.channel.send(":ok_hand: summoner added")
-                else:
-                    await ctx.channel.send(":x: summoner already added")
+            if cursor.rowcount:
+                print(
+                    f"{ctx.message.author} added {name} on {region.value} for {ctx.message.guild.name}"
+                )
+                await ctx.channel.send(":ok_hand: summoner added")
+            else:
+                await ctx.channel.send(":x: summoner already added")
 
     @commands.guild_only()
     @commands.check_any(commands.is_owner(), may_invoke)
