@@ -57,7 +57,7 @@ class MasteryRole(commands.Cog):
             )
             champion_row = await cursor.fetchone()
             if champion_row is None:
-                await ctx.channel.send("no champion configured for this guild")
+                await ctx.channel.send(":x: no champion configured for this guild")
                 return
 
         champion = Champion(id=champion_row[0], region=region)
@@ -79,4 +79,4 @@ class MasteryRole(commands.Cog):
             discord.Object(id=matching_role),
             reason=f"mastery score of {mastery.points:,} on {name} in {region.value}",
         )
-        await ctx.send("role added!")
+        await ctx.send(":ok_hand: role added!")
