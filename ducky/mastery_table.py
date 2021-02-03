@@ -128,7 +128,7 @@ class MasteryTable(commands.Cog):
         try:
             async with db_cursor(self.dsn) as cursor:
                 await cursor.execute(
-                    "SELECT id FROM champions WHERE guild_id = %s",
+                    "SELECT entry_id, id FROM champions WHERE guild_id = %s",
                     (ctx.message.guild.id,),
                 )
                 champion_row = await cursor.fetchone()
@@ -137,7 +137,7 @@ class MasteryTable(commands.Cog):
                     return None
 
                 await cursor.execute(
-                    "SELECT id, upper(platform::text) FROM summoners WHERE guild_id = %s",
+                    "SELECT entry_id, id, upper(platform::text) FROM summoners WHERE guild_id = %s",
                     (ctx.message.guild.id,),
                 )
                 summoners = await cursor.fetchall()
@@ -145,26 +145,43 @@ class MasteryTable(commands.Cog):
                     await ctx.channel.send("no summoners added")
                     return None
 
-            await ctx.channel.send(f"starting build for {len(summoners)} summoners")
-            champion = Champion(
-                id=champion_row[0], region=Platform(summoners[0][1]).region
-            )
-            masteries = []
-            loop = asyncio.get_event_loop()
-            for (id_, platform) in summoners:
-                region = Platform(platform).region
-                summoner = Summoner(id=id_, region=region)
-                masterygetter = functools.partial(
-                    cassiopeia.get_champion_mastery,
-                    champion=champion,
-                    summoner=summoner,
-                    region=region,
+                await ctx.channel.send(f"starting build for {len(summoners)} summoners")
+                champion = Champion(
+                    id=champion_row[1], region=Platform(summoners[0][2]).region
                 )
-                mastery = await loop.run_in_executor(None, masterygetter)
-                summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
-                if mastery.points:
-                    # Do not add users with score of 0
-                    masteries.append((summoner_name, region.value, mastery.points))
+                masteries = []
+                loop = asyncio.get_event_loop()
+                for (entry_id, id_, platform) in summoners:
+                    region = Platform(platform).region
+                    summoner = Summoner(id=id_, region=region)
+                    masterygetter = functools.partial(
+                        cassiopeia.get_champion_mastery,
+                        champion=champion,
+                        summoner=summoner,
+                        region=region,
+                    )
+                    mastery = await loop.run_in_executor(None, masterygetter)
+                    summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
+
+                    # last_change updating is performed by the database:
+                    # - on INSERT, `now() AT TIME ZONE 'utc'` is used
+                    # - on UPDATE, `summoner_champion_masteries_update_change` is called
+                    query = (
+                        "INSERT INTO summoner_champion_masteries"
+                        " (champion_entry, summoner_entry, score) "
+                        "VALUES"
+                        " (%s, %s, %s) "
+                        "ON CONFLICT (champion_entry, summoner_entry)"
+                        " DO UPDATE SET score = EXCLUDED.score"
+                    )
+                    await cursor.execute(
+                        query,
+                        (champion_row[0], entry_id, mastery.points)
+                    )
+
+                    if mastery.points:
+                        # Do not add users with score of 0
+                        masteries.append((summoner_name, region.value, mastery.points))
 
             sorted_masteries = sorted(
                 masteries, key=operator.itemgetter(2), reverse=True
