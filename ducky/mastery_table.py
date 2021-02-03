@@ -60,11 +60,11 @@ class MasteryTable(commands.Cog):
         async with db_cursor(self.dsn) as cursor:
             try:
                 await cursor.execute(
-                    "INSERT INTO summoners (guild_id, id, platform) VALUES (%s, %s, %s)",
+                    "INSERT INTO summoners (guild_id, platform, id) VALUES (%s, %s, %s)",
                     (
                         ctx.message.guild.id,
-                        summoner_id,
                         region.platform.value.casefold(),
+                        summoner_id,
                     ),
                 )
             except psycopg2.errors.UniqueViolation:
@@ -97,8 +97,8 @@ class MasteryTable(commands.Cog):
                 query,
                 (
                     ctx.message.guild.id,
+                    region.platform.value.casefold(),
                     summoner_id,
-                    region.platform.value.casefold()
                 )
             )
 
