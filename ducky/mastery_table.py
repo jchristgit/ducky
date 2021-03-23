@@ -213,17 +213,16 @@ class MasteryTable(commands.Cog):
                     if mastery.points:
                         masteries.append((summoner_name, region.value, mastery.points))
 
-                        # last_change updating is performed by the database:
-                        # - on INSERT, `now() AT TIME ZONE 'utc'` is used
-                        # - on UPDATE, `summoner_champion_masteries_update_change` is called
                         query = (
                             "INSERT INTO summoner_champion_masteries"
                             " (champion_entry, summoner_entry, score) "
                             "VALUES"
                             " (%s, %s, %s) "
                             "ON CONFLICT (champion_entry, summoner_entry)"
-                            " DO UPDATE SET score = EXCLUDED.score"
+                            " DO UPDATE SET score = EXCLUDED.score, "
+                            "               last_change = (now() AT TIME ZONE 'utc')"
                         )
+
                         await cursor.execute(
                             query,
                             (champion_row[0], entry_id, mastery.points)
