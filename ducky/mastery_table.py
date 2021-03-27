@@ -282,7 +282,7 @@ class MasteryTable(commands.Cog):
         """
 
         async with db_cursor(self.dsn) as cursor:
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT
                     summoner.id,
