@@ -214,13 +214,17 @@ class MasteryTable(commands.Cog):
                         masteries.append((summoner_name, region.value, mastery.points))
 
                         query = (
-                            "INSERT INTO summoner_champion_masteries"
-                            " (champion_entry, summoner_entry, score) "
-                            "VALUES"
-                            " (%s, %s, %s) "
-                            "ON CONFLICT (champion_entry, summoner_entry)"
-                            " DO UPDATE SET score = EXCLUDED.score, "
-                            "               last_change = (now() AT TIME ZONE 'utc')"
+                            """
+                            INSERT INTO summoner_champion_masteries
+                                (champion_entry, summoner_entry, score)
+                            VALUES
+                                (%s, %s, %s)
+                            ON CONFLICT
+                                (champion_entry, summoner_entry)
+                            DO UPDATE SET
+                                last_change = (CASE WHEN score = EXCLUDED.score THEN (now() AT TIME ZONE 'utc')),
+                                score = EXCLUDED.score
+                            """
                         )
 
                         await cursor.execute(
