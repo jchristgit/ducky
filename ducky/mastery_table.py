@@ -303,6 +303,8 @@ class MasteryTable(commands.Cog):
                     AND summoner_champion_masteries.summoner_entry = summoners.entry_id
                     AND summoner_champion_masteries.score < %s
                     AND (now() AT TIME ZONE 'utc') - summoner_champion_masteries.last_change > %s::interval
+                ORDER BY
+                    delta DESC
                 """,
                 (ctx.guild.id, minscore, age),
             )
@@ -318,9 +320,10 @@ class MasteryTable(commands.Cog):
                 region = Platform(platform).region
                 summoner = Summoner(id=summoner_id, region=region)
                 summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
+                interval_head, *_tail = delta.split(', ')
                 await ctx.channel.send(
-                    f":information_source: summoner `{summoner_name}` on "
-                    f"{region.value} with `{score:,}` points, last change {delta} ago"
+                    f":information_source: {region.value} player `{summoner_name}` "
+                    f" at `{score:,}` points, changed {interval_head} ago"
                 )
 
             await ctx.channel.send(":ok_hand: all summoners displayed")
