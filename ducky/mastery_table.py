@@ -285,13 +285,13 @@ class MasteryTable(commands.Cog):
             await cursor.execute(
                 """
                 SELECT
-                    summoner.id,
-                    summoner.platform,
+                    summoners.id,
+                    summoners.platform,
                     summoner_champion_masteries.score,
                     now() AT TIME ZONE 'utc' - summoner_champion_masteries.last_change AS delta
                 FROM
                     champions,
-                    summoner,
+                    summoners,
                     summoner_champion_masteries
                 WHERE
                     champions.guild_id = $1
