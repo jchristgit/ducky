@@ -313,7 +313,7 @@ class MasteryTable(commands.Cog):
         if summoners:
             await ctx.channel.send(
                 f":information_source: {len(summoners)} summoners fetched, "
-                "resolving IDs and displaying top 8"
+                f"resolving IDs and displaying top {min(len(summoners), 8)}"
             )
 
             loop = asyncio.get_event_loop()
@@ -327,7 +327,7 @@ class MasteryTable(commands.Cog):
                     f" at `{score:,}` points, changed {interval_head} ago"
                 )
 
-            await ctx.channel.send(":ok_hand: all summoners displayed")
+            await ctx.channel.send(":ok_hand: listing complete")
 
         else:
             await ctx.channel.send(
