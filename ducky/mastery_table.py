@@ -216,25 +216,20 @@ class MasteryTable(commands.Cog):
                         query = (
                             """
                             INSERT INTO summoner_champion_masteries
-                                (champion_entry, summoner_entry, score)
+                                (champion_entry, summoner_entry, score, last_change)
                             VALUES
-                                (%s, %s, %s)
+                                (%s, %s, %s, %s)
                             ON CONFLICT
                                 (champion_entry, summoner_entry)
                             DO UPDATE SET
-                                last_change = (
-                                    CASE WHEN score = EXCLUDED.score
-                                        THEN (now() AT TIME ZONE 'utc')
-                                        ELSE EXCLUDED.last_change
-                                    END
-                                ),
+                                last_change = EXCLUDED.last_change,
                                 score = EXCLUDED.score
                             """
                         )
 
                         await cursor.execute(
                             query,
-                            (champion_row[0], entry_id, mastery.points)
+                            (champion_row[0], entry_id, mastery.points, mastery.last_played.datetime)
                         )
 
                     else:
