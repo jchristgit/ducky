@@ -291,7 +291,7 @@ class MasteryTable(commands.Cog):
                 SELECT
                     summoners.id,
                     upper(summoners.platform::text),
-                    summoner_champion_masteries.score,
+                    to_char(summoner_champion_masteries.score, '999,999,999') AS pretty_score,
                     now() AT TIME ZONE 'utc' - summoner_champion_masteries.last_change AS delta
                 FROM
                     champions,
@@ -320,7 +320,7 @@ class MasteryTable(commands.Cog):
                 summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
                 await ctx.channel.send(
                     f":information_source: summoner `{summoner_name}` on "
-                    f"{region.upper()} with `{score:,}` points, last change {delta} ago"
+                    f"{region.value} with `{score}` points, last change {delta} ago"
                 )
 
             await ctx.channel.send(":ok_hand: all summoners displayed")
