@@ -290,7 +290,7 @@ class MasteryTable(commands.Cog):
                 """
                 SELECT
                     summoners.id,
-                    summoners.platform,
+                    upper(summoners.platform::text),
                     summoner_champion_masteries.score,
                     now() AT TIME ZONE 'utc' - summoner_champion_masteries.last_change AS delta
                 FROM
