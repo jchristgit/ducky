@@ -312,17 +312,18 @@ class MasteryTable(commands.Cog):
 
         if summoners:
             await ctx.channel.send(
-                f":information_source: {len(summoners)} summoners fetched, resolving IDs"
+                f":information_source: {len(summoners)} summoners fetched, "
+                "resolving IDs and displaying top 8"
             )
 
             loop = asyncio.get_event_loop()
-            for (summoner_id, platform, score, delta) in summoners:
+            for (summoner_id, platform, score, delta) in summoners[:8]:
                 region = Platform(platform).region
                 summoner = Summoner(id=summoner_id, region=region)
                 summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
                 interval_head, *_tail = str(delta).split(', ')
                 await ctx.channel.send(
-                    f":information_source: {region.value} player `{summoner_name}` "
+                    f"- {region.value} player `{summoner_name}` "
                     f" at `{score:,}` points, changed {interval_head} ago"
                 )
 
