@@ -294,11 +294,11 @@ class MasteryTable(commands.Cog):
                     summoners,
                     summoner_champion_masteries
                 WHERE
-                    champions.guild_id = $1
+                    champions.guild_id = %s
                     AND summoner_champion_masteries.champion_entry = champions.entry_id
                     AND summoner_champion_masteries.summoner_entry = summoners.entry_id
-                    AND summoner_champion_masteries.score < $2
-                    AND (now() AT TIME ZONE 'utc') - summoner_champion_masteries.last_change > $3::interval
+                    AND summoner_champion_masteries.score < %s
+                    AND (now() AT TIME ZONE 'utc') - summoner_champion_masteries.last_change > %s::interval
                 """,
                 (ctx.guild.id, minscore, age),
             )
