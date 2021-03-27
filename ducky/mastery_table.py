@@ -313,6 +313,7 @@ class MasteryTable(commands.Cog):
                 f":information_source: {len(summoners)} summoners fetched, resolving IDs"
             )
 
+            loop = asyncio.get_event_loop()
             for (summoner_id, platform, score, delta) in summoners:
                 region = Platform(platform).region
                 summoner = Summoner(id=summoner_id, region=region)
