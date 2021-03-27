@@ -262,3 +262,57 @@ class MasteryTable(commands.Cog):
 
         finally:
             self.builds_running.remove(ctx.message.guild.id)
+
+    @commands.guild_only()
+    @commands.check_any(commands.is_owner(), may_invoke)
+    @table.command(name='old')
+    async def table_old(self, ctx: commands.Context, minscore: int, *, age: str = '2 weeks') -> None:
+        """Find old summoners in the mastery table.
+
+        This uses cached information in the database, and should thus
+        ideally be used after a table build when the cache has been
+        refreshed.
+
+        The command takes two arguments:
+        - `minscore` determines the minimum score that a user should have.
+          Users with a score higher than the number included here will not
+          be shown in the response.
+        - `age` should be the age of entries in the database. By default,
+          summoners that have not played bard in the past two weeks are returned.
+        """
+
+        async with db_cursor(self.dsn) as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    summoner.id,
+                    summoner.platform,
+                    summoner_champion_masteries.score,
+                    now() AT TIME ZONE 'utc' - summoner_champion_masteries.last_change AS delta
+                FROM
+                    champions,
+                    summoner,
+                    summoner_champion_masteries
+                WHERE
+                    champions.guild_id = $1
+                    AND summoner_champion_masteries.champion_entry = champions.entry_id
+                    AND summoner_champion_masteries.summoner_entry = summoners.entry_id
+                    AND (now() AT TIME ZONE 'utc') - summoner_champion_masteries.last_change > $2::interval
+                """
+            )
+            summoners = await cursor.fetchall()
+
+        await ctx.channel.send(
+            ":information_source: {len(summoners)} summoners fetched, resolving IDs"
+        )
+
+        for (summoner_id, platform, score, delta) in summoners:
+            region = Platform(platform).region
+            summoner = Summoner(id=summoner_id, region=region)
+            summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
+            await ctx.channel.send(
+                f":information_source: summoner `{summoner_name}` on "
+                f"{region.upper()} with `{score:,}` points, last change {delta} ago"
+            )
+
+        await ctx.channel.send(":ok_hand: all summoners displayed")
