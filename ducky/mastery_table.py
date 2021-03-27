@@ -304,17 +304,24 @@ class MasteryTable(commands.Cog):
             )
             summoners = await cursor.fetchall()
 
-        await ctx.channel.send(
-            ":information_source: {len(summoners)} summoners fetched, resolving IDs"
-        )
-
-        for (summoner_id, platform, score, delta) in summoners:
-            region = Platform(platform).region
-            summoner = Summoner(id=summoner_id, region=region)
-            summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
+        if summoners:
             await ctx.channel.send(
-                f":information_source: summoner `{summoner_name}` on "
-                f"{region.upper()} with `{score:,}` points, last change {delta} ago"
+                f":information_source: {len(summoners)} summoners fetched, resolving IDs"
             )
 
-        await ctx.channel.send(":ok_hand: all summoners displayed")
+            for (summoner_id, platform, score, delta) in summoners:
+                region = Platform(platform).region
+                summoner = Summoner(id=summoner_id, region=region)
+                summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
+                await ctx.channel.send(
+                    f":information_source: summoner `{summoner_name}` on "
+                    f"{region.upper()} with `{score:,}` points, last change {delta} ago"
+                )
+
+            await ctx.channel.send(":ok_hand: all summoners displayed")
+
+        else:
+            await ctx.channel.send(
+                f":information_source: no summoners matching query found"
+            )
+            return
