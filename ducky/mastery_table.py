@@ -222,7 +222,12 @@ class MasteryTable(commands.Cog):
                             ON CONFLICT
                                 (champion_entry, summoner_entry)
                             DO UPDATE SET
-                                last_change = (CASE WHEN score = EXCLUDED.score THEN (now() AT TIME ZONE 'utc')),
+                                last_change = (
+                                    CASE WHEN score = EXCLUDED.score
+                                        THEN (now() AT TIME ZONE 'utc')
+                                        ELSE EXCLUDED.last_change
+                                    END
+                                ),
                                 score = EXCLUDED.score
                             """
                         )
