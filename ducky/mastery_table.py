@@ -320,7 +320,7 @@ class MasteryTable(commands.Cog):
                 region = Platform(platform).region
                 summoner = Summoner(id=summoner_id, region=region)
                 summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
-                interval_head, *_tail = delta.split(', ')
+                interval_head, *_tail = str(delta).split(', ')
                 await ctx.channel.send(
                     f":information_source: {region.value} player `{summoner_name}` "
                     f" at `{score:,}` points, changed {interval_head} ago"
