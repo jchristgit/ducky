@@ -297,8 +297,10 @@ class MasteryTable(commands.Cog):
                     champions.guild_id = $1
                     AND summoner_champion_masteries.champion_entry = champions.entry_id
                     AND summoner_champion_masteries.summoner_entry = summoners.entry_id
-                    AND (now() AT TIME ZONE 'utc') - summoner_champion_masteries.last_change > $2::interval
-                """
+                    AND summoner_champion_masteries.score < $2
+                    AND (now() AT TIME ZONE 'utc') - summoner_champion_masteries.last_change > $3::interval
+                """,
+                (ctx.guild.id, minscore, age),
             )
             summoners = await cursor.fetchall()
 
