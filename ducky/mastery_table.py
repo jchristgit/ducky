@@ -319,17 +319,18 @@ class MasteryTable(commands.Cog):
 
             loop = asyncio.get_event_loop()
             entries = []
-            for (summoner_id, platform, score, delta) in summoners[:8]:
-                region = Platform(platform).region
-                summoner = Summoner(id=summoner_id, region=region)
-                summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
-                interval_head, *_tail = str(delta).split(', ')
-                entries.append(
-                    f"- {region.value} player `{summoner_name}` "
-                    f" at `{score:,}` points, changed {interval_head} ago"
-                )
+            async with ctx.typing():
+                for (summoner_id, platform, score, delta) in summoners[:8]:
+                    region = Platform(platform).region
+                    summoner = Summoner(id=summoner_id, region=region)
+                    summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
+                    interval_head, *_tail = str(delta).split(', ')
+                    entries.append(
+                        f"- {region.value} player `{summoner_name}` "
+                        f" at `{score:,}` points, changed {interval_head} ago"
+                    )
 
-            await ctx.channel.send("\n".join(entries))
+                await ctx.channel.send("\n".join(entries))
             await ctx.channel.send(":ok_hand: listing complete")
 
         else:
