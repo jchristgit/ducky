@@ -282,7 +282,8 @@ class MasteryTable(commands.Cog):
           Users with a score higher than the number included here will not
           be shown in the response.
         - `age` should be the age of entries in the database. By default,
-          summoners that have not played bard in the past two weeks are returned.
+          summoners that have not played the champion in the past two weeks
+          are returned.
         """
 
         async with db_cursor(self.dsn) as cursor:
@@ -336,3 +337,12 @@ class MasteryTable(commands.Cog):
                 f":information_source: no summoners matching query found"
             )
             return
+
+    @commands.guild_only()
+    @commands.check_any(commands.is_owner(), may_invoke)
+    @table.command(name='below')
+    async def table_below(self, ctx: commands.Context, score: int) -> None:
+        """Find summoners below the given score."""
+
+        command = ctx.bot.get_command('table old')
+        await ctx.invoke(command, minscore=score)
