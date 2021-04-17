@@ -345,4 +345,4 @@ class MasteryTable(commands.Cog):
         """Find summoners below the given score."""
 
         command = ctx.bot.get_command('table old')
-        await ctx.invoke(command, minscore=score)
+        await ctx.invoke(command, minscore=score, age='1 second')
