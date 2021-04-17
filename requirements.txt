@@ -1,3 +1,3 @@
-aiopg==1.0.0
+aiopg==1.2.1
 cassiopeia==4.0.18
 discord.py==1.5.1
