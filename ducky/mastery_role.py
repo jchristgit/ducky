@@ -16,7 +16,9 @@ def is_bardians(ctx: commands.Context) -> bool:
 
 
 def find_matching_role(score: int) -> int:
-    if score >= 4_000_000:
+    if score >= 5_000_000:
+        return 1000812021085900891
+    elif score >= 4_000_000:
         return 695832731090681937
     elif score >= 3_000_000:
         return 396411228890726402
