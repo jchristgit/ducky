@@ -49,7 +49,7 @@ class MasteryRole(commands.Cog):
     @commands.guild_only()
     @commands.check(is_bardians)
     async def masteryrole(
-        self, ctx: commands.Context, region: as_region, *, name: str
+        self, ctx: commands.Context, region: as_region, *, name_with_tagline: str
     ) -> None:
         """Assign a role for your mastery score."""
 
@@ -62,8 +62,13 @@ class MasteryRole(commands.Cog):
                 await ctx.channel.send(":x: no champion configured for this guild")
                 return
 
+        if "#" not in name_with_tagline:
+            await ctx.channel.send(":no_entry_sign: please send your name together with your tagline, e.g. `+masteryrole EUW Ducky#Bot`")
+            return
+
         champion = Champion(id=champion_row[0], region=region)
-        summoner = Summoner(name=name, region=region)
+        name, tagline = name_with_tagline.split("#")
+        summoner = Summoner(name=name, tagline=tagline, region=region)
         masterygetter = functools.partial(
             cassiopeia.get_champion_mastery,
             champion=champion,
