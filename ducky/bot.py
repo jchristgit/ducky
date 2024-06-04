@@ -11,6 +11,5 @@ class CommandBot(Bot):
         super().__init__(*args, **kwargs)
 
     async def setup_hook(self):
-        # await self.add_cog(ErrorHandler())
         await self.add_cog(MasteryRole(dsn=self._dsn))
         await self.add_cog(MasteryTable(dsn=self._dsn))

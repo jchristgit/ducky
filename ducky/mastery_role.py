@@ -3,7 +3,7 @@ import functools
 
 import cassiopeia
 import discord
-from cassiopeia import Champion, Platform, Summoner
+from cassiopeia import Account, Champion, Platform
 from discord.ext import commands
 
 from .converters import as_region
@@ -68,15 +68,12 @@ class MasteryRole(commands.Cog):
 
         champion = Champion(id=champion_row[0], region=region)
         name, tagline = name_with_tagline.split("#")
-        summoner = Summoner(name=name, tagline=tagline, region=region)
-        masterygetter = functools.partial(
-            cassiopeia.get_champion_mastery,
+        account = Account(name=name, tagline=tagline, region=region)
+        mastery = cassiopeia.get_champion_mastery(
             champion=champion,
-            summoner=summoner,
+            summoner=account.summoner,
             region=region,
         )
-        loop = asyncio.get_event_loop()
-        mastery = await loop.run_in_executor(None, masterygetter)
         matching_role = find_matching_role(mastery.points)
         print(
             f"giving {ctx.message.author} role {matching_role} for "
