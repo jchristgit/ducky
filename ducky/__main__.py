@@ -38,7 +38,9 @@ def main() -> None:
     args = create_parser().parse_args()
     cassiopeia.apply_settings({'logging': {'print_calls': False}})
     cassiopeia.set_riot_api_key(args.api_key)
-    intents = Intents.default() | Intents.message_content | Intents.members
+    intents = Intents.default()
+    intents.message_content = True
+    intents.members = True
     bot = Bot(command_prefix=args.prefix, intents=intents, description=__doc__, max_messages=None)
     print("starting up")
     bot.add_cog(ErrorHandler())
