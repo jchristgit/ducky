@@ -4,11 +4,8 @@ import os
 
 import cassiopeia
 from discord import Intents
-from discord.ext.commands import Bot
 
-from .error_handler import ErrorHandler
-from .mastery_role import MasteryRole
-from .mastery_table import MasteryTable
+from .bot import Bot
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -41,11 +38,9 @@ def main() -> None:
     intents = Intents.default()
     intents.message_content = True
     intents.members = True
-    bot = Bot(command_prefix=args.prefix, intents=intents, description=__doc__, max_messages=None)
+    bot = Bot(dsn=args.dsn, command_prefix=args.prefix,
+              intents=intents, description=__doc__, max_messages=None)
     print("starting up")
-    bot.add_cog(ErrorHandler())
-    bot.add_cog(MasteryRole(dsn=args.dsn))
-    bot.add_cog(MasteryTable(dsn=args.dsn))
     bot.run(args.token)
 
 
