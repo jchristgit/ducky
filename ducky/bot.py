@@ -1,6 +1,5 @@
 from discord.ext.commands import Bot
 
-from .error_handler import ErrorHandler
 from .mastery_role import MasteryRole
 from .mastery_table import MasteryTable
 
