@@ -5,7 +5,7 @@ from .mastery_role import MasteryRole
 from .mastery_table import MasteryTable
 
 
-class Ducky(Bot):
+class CommandBot(Bot):
     def __init__(self, *args, **kwargs):
         self._dsn = kwargs.pop('dsn')
         super().__init__(*args, **kwargs)

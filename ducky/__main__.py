@@ -5,7 +5,7 @@ import os
 import cassiopeia
 from discord import Intents
 
-from .bot import Bot
+from .bot import CommandBot
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -38,8 +38,8 @@ def main() -> None:
     intents = Intents.default()
     intents.message_content = True
     intents.members = True
-    bot = Bot(dsn=args.dsn, command_prefix=args.prefix,
-              intents=intents, description=__doc__, max_messages=None)
+    bot = CommandBot(dsn=args.dsn, command_prefix=args.prefix,
+                     intents=intents, description=__doc__, max_messages=None)
     print("starting up")
     bot.run(args.token)
 
