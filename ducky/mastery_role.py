@@ -77,7 +77,7 @@ class MasteryRole(commands.Cog):
         matching_role = find_matching_role(mastery.points)
         print(
             f"giving {ctx.message.author} role {matching_role} for "
-            f"{mastery.points:,} points on {name} in {region.value}"
+            f"{mastery.points:,} points on {name_with_tagline!r} in {region.value}"
         )
         await ctx.message.author.add_roles(
             discord.Object(id=matching_role),
