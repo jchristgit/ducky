@@ -81,6 +81,6 @@ class MasteryRole(commands.Cog):
         )
         await ctx.message.author.add_roles(
             discord.Object(id=matching_role),
-            reason=f"mastery score of {mastery.points:,} on {name} in {region.value}",
+            reason=f"mastery score of {mastery.points:,} on {name_with_tagline} in {region.value}",
         )
         await ctx.send(":ok_hand: role added!")
