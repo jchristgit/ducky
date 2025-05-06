@@ -206,7 +206,7 @@ class MasteryTable(commands.Cog):
                         region=region,
                     )
                     mastery = await loop.run_in_executor(None, masterygetter)
-                    summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
+                    summoner_name = await loop.run_in_executor(None, lambda: summoner.account.name)
 
 
                     # Do not add users with score of 0
