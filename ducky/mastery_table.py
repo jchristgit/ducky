@@ -215,7 +215,7 @@ class MasteryTable(commands.Cog):
                         print(f"entry with entry id {entry_id}, summoner id {id_} in {region} does not resolve to an account...")
                         continue
 
-                    points = await loop.run_in_executor(None, mastery.points)
+                    points = await loop.run_in_executor(None, lambda: mastery.points)
 
 
                     # Do not add users with score of 0
