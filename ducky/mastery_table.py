@@ -10,6 +10,7 @@ import aiopg
 import cassiopeia
 import discord
 from cassiopeia import Champion, Region, Platform, Summoner
+from datapipelines.common import NotFoundError
 from discord.ext import commands
 
 from .converters import as_region
@@ -206,7 +207,11 @@ class MasteryTable(commands.Cog):
                         region=region,
                     )
                     mastery = await loop.run_in_executor(None, masterygetter)
-                    summoner_name = await loop.run_in_executor(None, lambda: summoner.account.name)
+                    try:
+                        summoner_name = await loop.run_in_executor(None, lambda: summoner.account.name)
+                    except NotFoundError:
+                        print(f"entry with entry id {entry_id}, summoner id {id_} in {region} does not resolve to an account...")
+                        continue
 
 
                     # Do not add users with score of 0
