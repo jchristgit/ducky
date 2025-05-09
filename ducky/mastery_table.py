@@ -208,7 +208,9 @@ class MasteryTable(commands.Cog):
                     )
                     mastery = await loop.run_in_executor(None, masterygetter)
                     try:
-                        summoner_name = await loop.run_in_executor(None, lambda: summoner.account.name)
+                        name = await loop.run_in_executor(None, lambda: summoner.account.name)
+                        tagline = await loop.run_in_executor(None, lambda: summoner.account.tagline)
+                        summoner_name = f"{name}#{tagline}"
                     except NotFoundError:
                         print(f"entry with entry id {entry_id}, summoner id {id_} in {region} does not resolve to an account...")
                         continue
