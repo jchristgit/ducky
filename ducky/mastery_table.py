@@ -213,10 +213,12 @@ class MasteryTable(commands.Cog):
                         print(f"entry with entry id {entry_id}, summoner id {id_} in {region} does not resolve to an account...")
                         continue
 
+                    points = await loop.run_in_executor(None, mastery.points)
+
 
                     # Do not add users with score of 0
-                    if mastery.points:
-                        masteries.append((summoner_name, region.value, mastery.points))
+                    if points:
+                        masteries.append((summoner_name, region.value, points))
 
                         query = (
                             """
@@ -234,7 +236,7 @@ class MasteryTable(commands.Cog):
 
                         await cursor.execute(
                             query,
-                            (champion_row[0], entry_id, mastery.points, mastery.last_played.datetime)
+                            (champion_row[0], entry_id, points, mastery.last_played.datetime)
                         )
 
                     else:
