@@ -68,7 +68,9 @@ class MasteryRole(commands.Cog):
         account = Account(name=name, tagline=tagline, region=region)
         mastery = cassiopeia.get_champion_mastery(
             champion=champion,
-            summoner=account.summoner,
+            # Not strictly supported by the type hint, but supported
+            # by the backing ChampionMastery object that is returned here.
+            summoner=account.summoner.puuid,
             region=region,
         )
         matching_role = find_matching_role(mastery.points)
