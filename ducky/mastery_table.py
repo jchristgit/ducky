@@ -12,7 +12,7 @@ from datapipelines.common import NotFoundError
 from discord.ext import commands
 
 from .converters import as_region, user_input_to_summoner
-from .db import db_cursor
+from . import db
 
 
 @commands.check
@@ -87,28 +87,14 @@ class MasteryTable(commands.Cog):
         """Add a summoner to the mastery sidebar."""
 
         summoner = await user_input_to_summoner(region, name_with_tagline)
-        async with db_cursor(self.dsn) as cursor:
-            query = (
-                "INSERT INTO summoners (guild_id, platform, id) "
-                "VALUES (%s, %s, %s) "
-                "ON CONFLICT DO NOTHING"
+        success = await db.add_summoner(summoner, ctx.message.guild.id, dsn=self.dsn)
+        if success:
+            print(
+                f"{ctx.message.author} added {name_with_tagline} on {region.value} for {ctx.message.guild.name}"
             )
-            await cursor.execute(
-                query,
-                (
-                    ctx.message.guild.id,
-                    region.platform.value.casefold(),
-                    summoner.id,
-                ),
-            )
-
-            if cursor.rowcount:
-                print(
-                    f"{ctx.message.author} added {name_with_tagline} on {region.value} for {ctx.message.guild.name}"
-                )
-                await ctx.channel.send(":ok_hand: summoner added")
-            else:
-                await ctx.channel.send(":x: summoner already added")
+            await ctx.channel.send(":ok_hand: summoner added")
+        else:
+            await ctx.channel.send(":x: summoner already added")
 
     @commands.guild_only()
     @commands.check_any(commands.is_owner(), may_invoke)
@@ -119,25 +105,11 @@ class MasteryTable(commands.Cog):
         """Remove a summoner to the mastery sidebar."""
 
         summoner = await user_input_to_summoner(region, name_with_tagline)
-        async with db_cursor(self.dsn) as cursor:
-            query = (
-                "DELETE FROM summoners "
-                "WHERE guild_id = %s AND platform = %s AND id = %s"
-            )
-
-            await cursor.execute(
-                query,
-                (
-                    ctx.message.guild.id,
-                    region.platform.value.casefold(),
-                    summoner.id,
-                )
-            )
-
-            if cursor.rowcount:
-                await ctx.channel.send(":ok_hand: summoner removed")
-            else:
-                await ctx.channel.send(":x: unknown summoner")
+        removed = await db.remove_summoner(summoner, ctx.message.guild.id, dsn=self.dsn)
+        if removed:
+            await ctx.channel.send(":ok_hand: summoner removed")
+        else:
+            await ctx.channel.send(":x: unknown summoner")
 
     @commands.guild_only()
     @commands.check_any(commands.is_owner(), may_invoke)
@@ -158,7 +130,7 @@ class MasteryTable(commands.Cog):
         self.builds_running.add(ctx.message.guild.id)
 
         try:
-            async with db_cursor(self.dsn) as cursor:
+            async with db.db_cursor(self.dsn) as cursor:
                 await cursor.execute(
                     "SELECT entry_id, id FROM champions WHERE guild_id = %s",
                     (ctx.message.guild.id,),
@@ -169,7 +141,7 @@ class MasteryTable(commands.Cog):
                     return None
 
                 await cursor.execute(
-                    "SELECT entry_id, id, upper(platform::text) FROM summoners WHERE guild_id = %s",
+                    "SELECT entry_id, puuid, upper(platform::text) FROM summoners WHERE guild_id = %s",
                     (ctx.message.guild.id,),
                 )
                 summoners = await cursor.fetchall()
@@ -195,7 +167,7 @@ class MasteryTable(commands.Cog):
                     masterygetter = functools.partial(
                         cassiopeia.get_champion_mastery,
                         champion=champion,
-                        summoner=summoner,
+                        summoner=summoner.puuid,
                         region=region,
                     )
                     mastery = await loop.run_in_executor(None, masterygetter)
@@ -287,7 +259,7 @@ class MasteryTable(commands.Cog):
           are returned.
         """
 
-        async with db_cursor(self.dsn) as cursor:
+        async with db.db_cursor(self.dsn) as cursor:
             await cursor.execute(
                 """
                 SELECT
@@ -323,6 +295,7 @@ class MasteryTable(commands.Cog):
             async with ctx.typing():
                 for (summoner_id, platform, score, delta) in summoners[:8]:
                     region = Platform(platform).region
+                    # XXX: move to puuid after update
                     summoner = Summoner(id=summoner_id, region=region)
                     summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
                     interval_head, *_tail = str(delta).split(', ')
@@ -348,3 +321,43 @@ class MasteryTable(commands.Cog):
 
         command = ctx.bot.get_command('table old')
         await ctx.invoke(command, minscore=score, age='1 second')
+
+    @commands.guild_only()
+    @commands.is_owner()
+    @table.command(name="rebuild")
+    async def table_rebuild(self, ctx: commands.Context) -> None:
+        """Rebuild the internal database for the current guild's mastery table."""
+
+        updated = 0
+        async with db.db_cursor(self.dsn) as cursor:
+            async with cursor.begin():
+                await cursor.execute(
+                    "SELECT entry_id, platform, name, tagline, puuid "
+                    "FROM summoners "
+                    "FOR UPDATE"
+                )
+                summoners = await cursor.fetchall()
+                for (entry_id, platform, name, tagline, id_or_puuid) in summoners:
+                    region = Platform(platform).region
+                    # Via the Riot API docs: PUUIDs have an exact length of 78 characters.
+                    if len(id_or_puuid) == 78:
+                        summoner = Summoner(puuid=id_or_puuid, region=region)
+                    else:
+                        summoner = Summoner(id=id_or_puuid, region=region)
+
+                    needs_update = (
+                        summoner.name != name
+                        or summoner.tagline != tagline
+                        or summoner.puuid != id_or_puuid
+                    )
+                    if needs_update:
+                        await cursor.execute(
+                            (
+                                "UPDATE summoners "
+                                "SET name = %s, tagline = %s, puuid = %s "
+                                "WHERE entry_id = %s"
+                            ),
+                            (summoner.name, summoner.tagline, summoner.puuid, entry_id),
+                        )
+                        updated += 1
+        await ctx.send(f":information_source: updated {updated} summoners, thanks for playing")
