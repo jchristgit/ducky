@@ -98,7 +98,7 @@ class MasteryTable(commands.Cog):
                 (
                     ctx.message.guild.id,
                     region.platform.value.casefold(),
-                    summoner.puuid,
+                    summoner.id,
                 ),
             )
 
