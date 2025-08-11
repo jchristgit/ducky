@@ -1,9 +1,6 @@
-import asyncio
-import functools
-
 import cassiopeia
 import discord
-from cassiopeia import Account, Champion, Platform
+from cassiopeia import Account, Champion
 from discord.ext import commands
 
 from .converters import as_region

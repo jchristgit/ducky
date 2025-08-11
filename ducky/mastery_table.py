@@ -1,19 +1,17 @@
 import asyncio
-import contextlib
 import functools
 import io
 import operator
 import random
 from typing import Set
 
-import aiopg
 import cassiopeia
 import discord
-from cassiopeia import Champion, Region, Platform, Summoner
+from cassiopeia import Champion, Platform, Summoner
 from datapipelines.common import NotFoundError
 from discord.ext import commands
 
-from .converters import as_region
+from .converters import as_region, user_input_to_summoner
 from .db import db_cursor
 
 
@@ -84,14 +82,11 @@ class MasteryTable(commands.Cog):
     @commands.check_any(commands.is_owner(), may_invoke)
     @summoner.command(name='add')
     async def summoner_add(
-        self, ctx: commands.Context, region: as_region, *, name: str
+        self, ctx: commands.Context, region: as_region, *, name_with_tagline: str
     ) -> None:
         """Add a summoner to the mastery sidebar."""
 
-        summoner = Summoner(region=region, name=name)
-        summoner_id = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: summoner.id
-        )  # noblock event loop
+        summoner = await user_input_to_summoner(region, name_with_tagline)
         async with db_cursor(self.dsn) as cursor:
             query = (
                 "INSERT INTO summoners (guild_id, platform, id) "
@@ -103,13 +98,13 @@ class MasteryTable(commands.Cog):
                 (
                     ctx.message.guild.id,
                     region.platform.value.casefold(),
-                    summoner_id,
+                    summoner.id,
                 ),
             )
 
             if cursor.rowcount:
                 print(
-                    f"{ctx.message.author} added {name} on {region.value} for {ctx.message.guild.name}"
+                    f"{ctx.message.author} added {name_with_tagline} on {region.value} for {ctx.message.guild.name}"
                 )
                 await ctx.channel.send(":ok_hand: summoner added")
             else:
@@ -119,14 +114,11 @@ class MasteryTable(commands.Cog):
     @commands.check_any(commands.is_owner(), may_invoke)
     @summoner.command(name='remove')
     async def summoner_remove(
-        self, ctx: commands.Context, region: as_region, *, name: str
+        self, ctx: commands.Context, region: as_region, *, name_with_tagline: str
     ) -> None:
         """Remove a summoner to the mastery sidebar."""
 
-        summoner = Summoner(region=region, name=name)
-        summoner_id = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: summoner.id
-        )  # noblock event loop
+        summoner = await user_input_to_summoner(region, name_with_tagline)
         async with db_cursor(self.dsn) as cursor:
             query = (
                 "DELETE FROM summoners "
@@ -138,7 +130,7 @@ class MasteryTable(commands.Cog):
                 (
                     ctx.message.guild.id,
                     region.platform.value.casefold(),
-                    summoner_id,
+                    summoner.id,
                 )
             )
 
