@@ -1,18 +1,15 @@
 import asyncio
-import functools
+import datetime
 import io
 import operator
 import random
 from typing import Set
 
-import cassiopeia
 import discord
-from cassiopeia import Champion, Platform, Summoner
-from datapipelines.common import NotFoundError
 from discord.ext import commands
 
-from .converters import as_region, user_input_to_summoner
 from . import db
+from . import league
 
 
 @commands.check
@@ -68,9 +65,10 @@ def go_for_phrase() -> str:
 class MasteryTable(commands.Cog):
     """Mastery table management."""
 
-    def __init__(self, dsn: str) -> None:
+    def __init__(self, dsn: str, lol_api: league.LolApi) -> None:
         self.dsn = dsn
         self.builds_running: Set[int] = set()
+        self.lol_api = lol_api
 
     @commands.guild_only()
     @commands.check_any(commands.is_owner(), may_invoke)
@@ -82,15 +80,18 @@ class MasteryTable(commands.Cog):
     @commands.check_any(commands.is_owner(), may_invoke)
     @summoner.command(name='add')
     async def summoner_add(
-        self, ctx: commands.Context, region: as_region, *, name_with_tagline: str
+        self, ctx: commands.Context, region: str, *, name_with_tagline: str
     ) -> None:
         """Add a summoner to the mastery sidebar."""
 
-        summoner = await user_input_to_summoner(region, name_with_tagline)
-        success = await db.add_summoner(summoner, ctx.message.guild.id, dsn=self.dsn)
+        name, tagline = name_with_tagline.split("#")
+        puuid = self.lol_api.account_puuid(name, tagline)
+        success = await db.add_summoner(
+            region, name, tagline, puuid, ctx.message.guild.id, dsn=self.dsn,
+        )
         if success:
             print(
-                f"{ctx.message.author} added {name_with_tagline} on {region.value} for {ctx.message.guild.name}"
+                f"{ctx.message.author} added {name_with_tagline} on {region} for {ctx.message.guild.name}"
             )
             await ctx.channel.send(":ok_hand: summoner added")
         else:
@@ -100,12 +101,13 @@ class MasteryTable(commands.Cog):
     @commands.check_any(commands.is_owner(), may_invoke)
     @summoner.command(name='remove')
     async def summoner_remove(
-        self, ctx: commands.Context, region: as_region, *, name_with_tagline: str
+        self, ctx: commands.Context, region: str, *, name_with_tagline: str
     ) -> None:
         """Remove a summoner to the mastery sidebar."""
 
-        summoner = await user_input_to_summoner(region, name_with_tagline)
-        removed = await db.remove_summoner(summoner, ctx.message.guild.id, dsn=self.dsn)
+        name, tagline = name_with_tagline.split("#")
+        puuid = self.lol_api.account_puuid(name, tagline)
+        removed = await db.remove_summoner(puuid, ctx.message.guild.id, dsn=self.dsn)
         if removed:
             await ctx.channel.send(":ok_hand: summoner removed")
         else:
@@ -141,7 +143,11 @@ class MasteryTable(commands.Cog):
                     return None
 
                 await cursor.execute(
-                    "SELECT entry_id, puuid, upper(platform::text) FROM summoners WHERE guild_id = %s",
+                    (
+                        "SELECT entry_id, puuid, upper(platform::text), name, tagline "
+                        "FROM summoners "
+                        "WHERE guild_id = %s"
+                    ),
                     (ctx.message.guild.id,),
                 )
                 summoners = await cursor.fetchall()
@@ -156,35 +162,25 @@ class MasteryTable(commands.Cog):
                         f":information_source: this will take a while, why not go {go_for_phrase()}?"
                     )
 
-                champion = Champion(
-                    id=champion_row[1], region=Platform(summoners[0][2]).region
-                )
                 masteries = []
                 loop = asyncio.get_event_loop()
-                for (entry_id, id_, platform) in summoners:
-                    region = Platform(platform).region
-                    summoner = Summoner(id=id_, region=region)
-                    masterygetter = functools.partial(
-                        cassiopeia.get_champion_mastery,
-                        champion=champion,
-                        summoner=summoner.puuid,
-                        region=region,
+                for (entry_id, puuid, platform, name, tagline) in summoners:
+                    mastery = await loop.run_in_executor(
+                        None,
+                        lambda: self.lol_api.champion_mastery(
+                            # cough
+                            region_or_platform=platform,
+                            puuid=puuid,
+                            champion_id=champion_row[1],
+                        )
                     )
-                    mastery = await loop.run_in_executor(None, masterygetter)
-                    try:
-                        name = await loop.run_in_executor(None, lambda: summoner.account.name)
-                        tagline = await loop.run_in_executor(None, lambda: summoner.account.tagline)
-                        summoner_name = f"{name}#{tagline}"
-                    except NotFoundError:
-                        print(f"entry with entry id {entry_id}, summoner id {id_} in {region} does not resolve to an account...")
-                        continue
-
-                    points = await loop.run_in_executor(None, lambda: mastery.points)
-
+                    summoner_name = f"{name}#{tagline}"
+                    points = mastery["championPoints"]
 
                     # Do not add users with score of 0
                     if points:
-                        masteries.append((summoner_name, region.value, points))
+                        last_playtime = datetime.datetime.fromtimestamp(mastery["lastPlayTime"] / 1000)
+                        masteries.append((summoner_name, platform.upper(), points))
 
                         query = (
                             """
@@ -202,18 +198,18 @@ class MasteryTable(commands.Cog):
 
                         await cursor.execute(
                             query,
-                            (champion_row[0], entry_id, points, mastery.last_played.datetime)
+                            (champion_row[0], entry_id, points, last_playtime),
                         )
 
                     else:
                         # Remove users who never played the champion
                         await cursor.execute("DELETE FROM summoners WHERE entry_id = %s", (entry_id,))
                         await ctx.channel.send(
-                            f":information_source: player `{summoner.name}` on "
-                            f"`{region.value}` never played `{champion.name}`, "
+                            f":information_source: player `{name}` on "
+                            f"`{platform}` never played configured champion, "
                             "automatically dropped from table"
                         )
-                        print(f"auto-drop {summoner.name} on {region.value} (eid={entry_id})")
+                        print(f"auto-drop {name} on {platform} (eid={entry_id})")
 
             sorted_masteries = sorted(
                 masteries, key=operator.itemgetter(2), reverse=True
@@ -263,7 +259,9 @@ class MasteryTable(commands.Cog):
             await cursor.execute(
                 """
                 SELECT
-                    summoners.id,
+                    summoners.puuid,
+                    summoners.name,
+                    summoners.tagline,
                     upper(summoners.platform::text),
                     summoner_champion_masteries.score,
                     now() AT TIME ZONE 'utc' - summoner_champion_masteries.last_change AS delta
@@ -290,17 +288,12 @@ class MasteryTable(commands.Cog):
                 f"resolving IDs and displaying top {min(len(summoners), 8)}"
             )
 
-            loop = asyncio.get_event_loop()
             entries = []
             async with ctx.typing():
-                for (summoner_id, platform, score, delta) in summoners[:8]:
-                    region = Platform(platform).region
-                    # XXX: move to puuid after update
-                    summoner = Summoner(id=summoner_id, region=region)
-                    summoner_name = await loop.run_in_executor(None, lambda: summoner.name)
+                for (_puuid, name, tagline, platform, score, delta) in summoners[:8]:
                     interval_head, *_tail = str(delta).split(', ')
                     entries.append(
-                        f"- {region.value} player `{summoner_name}` "
+                        f"- {platform} player `{name}#{tagline}` "
                         f" at `{score:,}` points, changed {interval_head} ago"
                     )
 
@@ -321,43 +314,3 @@ class MasteryTable(commands.Cog):
 
         command = ctx.bot.get_command('table old')
         await ctx.invoke(command, minscore=score, age='1 second')
-
-    @commands.guild_only()
-    @commands.is_owner()
-    @table.command(name="rebuild")
-    async def table_rebuild(self, ctx: commands.Context) -> None:
-        """Rebuild the internal database for the current guild's mastery table."""
-
-        updated = 0
-        async with db.db_cursor(self.dsn) as cursor:
-            async with cursor.begin():
-                await cursor.execute(
-                    "SELECT entry_id, platform, name, tagline, puuid "
-                    "FROM summoners "
-                    "FOR UPDATE"
-                )
-                summoners = await cursor.fetchall()
-                for (entry_id, platform, name, tagline, id_or_puuid) in summoners:
-                    region = Platform(platform).region
-                    # Via the Riot API docs: PUUIDs have an exact length of 78 characters.
-                    if len(id_or_puuid) == 78:
-                        summoner = Summoner(puuid=id_or_puuid, region=region)
-                    else:
-                        summoner = Summoner(id=id_or_puuid, region=region)
-
-                    needs_update = (
-                        summoner.name != name
-                        or summoner.tagline != tagline
-                        or summoner.puuid != id_or_puuid
-                    )
-                    if needs_update:
-                        await cursor.execute(
-                            (
-                                "UPDATE summoners "
-                                "SET name = %s, tagline = %s, puuid = %s "
-                                "WHERE entry_id = %s"
-                            ),
-                            (summoner.name, summoner.tagline, summoner.puuid, entry_id),
-                        )
-                        updated += 1
-        await ctx.send(f":information_source: updated {updated} summoners, thanks for playing")

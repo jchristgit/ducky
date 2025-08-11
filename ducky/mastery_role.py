@@ -1,10 +1,8 @@
-import cassiopeia
 import discord
-from cassiopeia import Account, Champion
 from discord.ext import commands
 
-from .converters import as_region
 from .db import db_cursor
+from .league import LolApi
 
 
 @commands.check
@@ -39,14 +37,15 @@ def find_matching_role(score: int) -> int:
 
 
 class MasteryRole(commands.Cog):
-    def __init__(self, dsn: str) -> None:
+    def __init__(self, dsn: str, lol_api: LolApi) -> None:
         self.dsn = dsn
+        self.lol_api = lol_api
 
     @commands.command()
     @commands.guild_only()
     @commands.check(is_bardians)
     async def masteryrole(
-        self, ctx: commands.Context, region: as_region, *, name_with_tagline: str
+        self, ctx: commands.Context, region: str, *, name_with_tagline: str
     ) -> None:
         """Assign a role for your mastery score."""
 
@@ -63,23 +62,16 @@ class MasteryRole(commands.Cog):
             await ctx.channel.send(":no_entry_sign: please send your name together with your tagline, e.g. `+masteryrole EUW Ducky#Bot`")
             return
 
-        champion = Champion(id=champion_row[0], region=region)
         name, tagline = name_with_tagline.split("#")
-        account = Account(name=name, tagline=tagline, region=region)
-        mastery = cassiopeia.get_champion_mastery(
-            champion=champion,
-            # Not strictly supported by the type hint, but supported
-            # by the backing ChampionMastery object that is returned here.
-            summoner=account.summoner.puuid,
-            region=region,
-        )
-        matching_role = find_matching_role(mastery.points)
+        puuid = self.lol_api.account_puuid(name, tagline)
+        mastery = self.lol_api.champion_mastery(region, puuid, champion_row[0])["championPoints"]
+        matching_role = find_matching_role(mastery)
         print(
             f"giving {ctx.message.author} role {matching_role} for "
-            f"{mastery.points:,} points on {name_with_tagline!r} in {region.value}"
+            f"{mastery:,} points on {name_with_tagline!r} in {region}"
         )
         await ctx.message.author.add_roles(
             discord.Object(id=matching_role),
-            reason=f"mastery score of {mastery.points:,} on {name_with_tagline} in {region.value}",
+            reason=f"mastery score of {mastery:,} on {name_with_tagline} in {region}",
         )
         await ctx.send(":ok_hand: role added!")
